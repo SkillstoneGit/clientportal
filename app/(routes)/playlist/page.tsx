@@ -14,7 +14,7 @@ import { SectionCard } from "@/components/cards/section-card";
 import { SubSectionCard } from "@/components/cards/sub-section-card";
 import { FormCard } from "@/components/cards/form-card";
 import type { Video } from "@/types/video";
-import type { Playlist, PlaylistComponent } from "@/types/playlist";
+import type { Playlist, PlaylistComponent, CompanyCardComponent } from "@/types/playlist";
 import { fetchVideos, ApiRequestError } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { TopNav } from "@/components/top-nav";
@@ -79,10 +79,17 @@ export default function PlaylistPage() {
   };
 
   const renderComponent = (component: PlaylistComponent) => {
-    if (!component) return null;
-
-    switch (component.__component) {
-      case "playlist-components.video-component":
+    if (!component || !('__component' in component)) {
+      console.warn('Invalid component:', component);
+      return null;
+    }
+  
+    const componentType = component.__component;
+   
+    console.log('Component raw data:', JSON.stringify(component, null, 2));
+  
+    switch (componentType) {
+      case "playlist-components.video":
         return (
           <VideoComponent
             key={component.id}
@@ -94,17 +101,31 @@ export default function PlaylistPage() {
           />
         );
       
-      case "playlist-components.company-card-component":
-        return (
-          <CompanyCard
-            key={component.id}
-            imageUrl={component.image?.data?.attributes?.url || ""}
-            label={component.label_text}
-            labelColor={component.label_colour}
-          />
-        );
+        case "playlist-components.company-card": {
+          const companyComponent = component as CompanyCardComponent;
+          // Log all available image-related fields
+          console.log('Company card fields:', {
+            hasImage: 'image' in companyComponent,
+            hasImageSource: 'image_source' in companyComponent,
+            allKeys: Object.keys(companyComponent),
+            component: companyComponent
+          });
+          
+          // Temporarily modify to look for both image and image_source
+          const imageData = companyComponent.image_source || (companyComponent as any).image;
+          
+          return (
+            <CompanyCard
+              key={component.id}
+              image_source={component.image_source}
+              label={component.label_text}
+              labelColor={component.label_colour}
+              className="bg-muted" // Add this to make it visible even without an image
+            />
+          );
+        }
       
-      case "playlist-components.image-card-component":
+      case "playlist-components.image-card":
         return (
           <ImageCard
             key={component.id}
@@ -116,7 +137,7 @@ export default function PlaylistPage() {
           />
         );
       
-      case "playlist-components.link-card-component":
+      case "playlist-components.link-card":
         return (
           <LinkCard
             key={component.id}
@@ -131,7 +152,7 @@ export default function PlaylistPage() {
           />
         );
       
-      case "playlist-components.section-card-component":
+      case "playlist-components.section-card":
         return (
           <div key={component.id} className="bg-secondary/50 rounded-lg">
             <SectionCard
@@ -142,7 +163,7 @@ export default function PlaylistPage() {
           </div>
         );
       
-      case "playlist-components.sub-section-card-component":
+      case "playlist-components.sub-section-card":
         return (
           <div key={component.id} className="bg-secondary/50 rounded-lg">
             <SubSectionCard
@@ -152,7 +173,7 @@ export default function PlaylistPage() {
           </div>
         );
       
-      case "playlist-components.input-card-component":
+      case "playlist-components.input-card":
         return (
           <FormCard
             key={component.id}
@@ -170,6 +191,7 @@ export default function PlaylistPage() {
         );
       
       default:
+        console.warn(`Unknown component type: ${componentType}`);
         return null;
     }
   };
